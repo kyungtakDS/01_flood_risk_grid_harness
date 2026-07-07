@@ -1,0 +1,40 @@
+# 전이 산출물 (실행 중간물 · 합성 테스트 데이터)
+_workspace/
+outputs/*
+!outputs/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# 대용량 지오데이터 페이로드 (폴더 구조·README는 커밋, 실제 데이터는 제외)
+*.tif
+*.tiff
+*.img
+*.vrt
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+*.gpkg
+*.geojson
+*.gml
+*.kml
+*.parquet
+*.nc
+*.hdf
+*.grib*
+*.zip
+*.7z
+*.gz
+
+# 로컬 설정 · OS
+.claude/settings.local.json
+.DS_Store
+Thumbs.db

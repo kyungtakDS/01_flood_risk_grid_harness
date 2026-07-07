@@ -1,0 +1,37 @@
+# 표준격자망 계약 파라미터 (grid contract)
+# src/ 코드와 .claude 에이전트/스킬이 공유하는 단일 기준.
+# 상세 근거: .claude/skills/geodata-grid-pipeline/references/grid-standard.md
+
+crs: "EPSG:5179"          # Korea 2000 / Unified CS (UTM-K, GRS80) — 전국 단일
+resolution_m: 100          # 100m x 100m 정사각
+nodata: -9999              # 결측 != 0. 명시적 NoData
+snap_origin: true          # 국가 표준 격자 원점에 snap (유역 타일 경계 정합)
+file_format: "COG"        # Cloud-Optimized GeoTIFF, 인자당 단일밴드
+table_format: "GeoParquet"
+
+grid_id: "sw_corner"       # SW 모서리 좌표 인코딩 (join 키)
+
+watershed:                 # 수자원단위지도 기반 분할
+  source: "data/watershed"
+  partition_by: "daegwon"  # 처리 단위: 한강/낙동강/금강/영산강/섬진강
+  model_unit: "junggwon"   # ML 모델링·공간 CV 단위(부하 저감)
+
+modeling:
+  models: [random_forest, xgboost, lightgbm, catboost, decision_tree]
+  labels: [flood_trace_polygon, ndms_point]   # 침수흔적도 ∪ NDMS
+  cv: spatial_block         # 중권역 블록 CV (무작위 k-fold 금지)
+
+forecast:
+  return_periods: [50, 100, 200]   # 년 빈도 (기본). SSP/nowcasting은 확장
+
+paths:
+  raw_point: "data/raw/point"
+  raw_polygon: "data/raw/polygon"
+  raw_raster: "data/raw/raster"
+  raw_tabular: "data/raw/tabular"
+  raw_timeseries: "data/raw/timeseries"
+  standard_grid: "data/standard_grid/grid_master"
+  pre_gridded: "data/standard_grid/pre_gridded"
+  labels: "data/labels"
+  workspace: "_workspace"
+  outputs: "outputs"
