@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>진행 정리 · 운영 대시보드 + 하네스 구성 (2026-07-10)</title>
+<style>
+  :root{
+    --plane:#f7f7f8; --surface:#ffffff; --ink:#0b0b0b; --sub:#3f3e3c; --muted:#8a8984;
+    --line:rgba(11,11,11,0.09); --line-2:rgba(11,11,11,0.06);
+    --accent:#5b5bd6; --accent-soft:#eeeefb;
+    --good:#0ca30c; --warn:#c07d00; --info:#2a78d6; --danger:#d03b3b;
+    --shadow:0 1px 2px rgba(11,11,11,.04), 0 4px 16px rgba(11,11,11,.05);
+    --radius:12px;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--plane);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.65;font-size:15px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .wrap{display:grid;grid-template-columns:220px minmax(0,760px);gap:40px;
+    max-width:1060px;margin:0 auto;padding:40px 28px 80px}
+
+  .toc{position:sticky;top:28px;align-self:start;font-size:13px}
+  .toc .toc-hd{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .toc a{display:block;color:var(--sub);padding:5px 10px;border-left:2px solid var(--line);font-weight:500}
+  .toc a:hover{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+
+  .doc-head{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--accent);font-weight:700;margin-bottom:10px}
+  .doc-head h1{font-size:27px;font-weight:720;letter-spacing:-.02em;line-height:1.2}
+  .doc-head .lede{color:var(--sub);font-size:15px;margin-top:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550;
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 11px;color:var(--sub)}
+  .chip b{color:var(--ink);font-weight:660}
+  .chip.ok{background:#f0faf0;border-color:rgba(12,163,12,.25);color:#0a6b0a}
+
+  section{margin-top:38px;scroll-margin-top:24px}
+  h2{font-size:18px;font-weight:680;letter-spacing:-.01em;padding-bottom:8px;border-bottom:1px solid var(--line-2);margin-bottom:16px}
+  h2 .n{color:var(--muted);font-weight:600;margin-right:8px;font-variant-numeric:tabular-nums}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);font-size:.88em;background:#f0f0ee;border:1px solid var(--line-2);border-radius:5px;padding:1px 5px}
+
+  .timeline{position:relative;padding-left:24px;margin-top:6px}
+  .timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl{position:relative;padding:0 0 18px 6px}
+  .tl:last-child{padding-bottom:0}
+  .tl-dot{position:absolute;left:-24px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+  .tl.done .tl-dot{background:var(--good);border-color:var(--good)}
+  .tl.now .tl-dot{background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .tl-title{font-size:14px;font-weight:650;letter-spacing:-.01em}
+  .tl-title .step{color:var(--muted);font-weight:600;margin-right:7px;font-variant-numeric:tabular-nums}
+  .tl-body{font-size:13.5px;color:var(--sub);margin-top:3px}
+
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--surface)}
+  table.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:650;padding:11px 14px;border-bottom:1px solid var(--line)}
+  table.tbl td{padding:11px 14px;border-bottom:1px solid var(--line-2);color:var(--sub);vertical-align:top}
+  table.tbl tr:last-child td{border-bottom:none}
+  table.tbl td .path{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:550}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .pill.new{background:#eef4fd;color:#1a5fb4}
+  .pill.mod{background:#fff4e0;color:#9a6200}
+  .pill.ok{background:#eafaea;color:#0a6b0a}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  .callout{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    background:var(--surface);padding:14px 16px;margin:14px 0;box-shadow:var(--shadow)}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.good{border-left-color:var(--good)}
+  .callout .co-hd{font-size:13px;font-weight:660;color:var(--ink);margin-bottom:4px}
+  .callout p{margin:4px 0;font-size:13.5px;color:var(--sub)}
+
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  footer code{font-size:11px}
+
+  @media (max-width:820px){
+    .wrap{grid-template-columns:1fr;gap:20px;padding:24px 18px 60px}
+    .toc{position:static;order:-1;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
+    .toc a{border-left:none;padding:4px 0}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc">
+    <div class="toc-hd">목차</div>
+    <a href="#overview">개요</a>
+    <a href="#timeline">진행 타임라인</a>
+    <a href="#artifacts">산출물</a>
+    <a href="#decisions">결정사항</a>
+    <a href="#verify">검증</a>
+    <a href="#next">다음 단계</a>
+    <a href="#refs">참고</a>
+  </nav>
+
+  <main>
+    <div class="doc-head" id="overview">
+      <div class="eyebrow">홍수위험도 하네스 · 세션 기록</div>
+      <h1>운영 대시보드 + 하네스 구성 — 진행 정리</h1>
+      <p class="lede">폴더의 홍수위험도 하네스 파일들을 근거로 <b>Notion+Linear 스타일·밝은 배경·Chart.js 원형(도넛) 차트</b> 대시보드를 만들었다.
+         요청대로 먼저 <code>/harness</code>로 대시보드 생성용 보조 하네스(에이전트+스킬)를 구성한 뒤 대시보드를 산출했고, 크롬 렌더링을 검증하고 <code>main</code>에 푸시했다.
+         이어 진행 내용을 HTML로 정리하는 <code>htmlity</code> 스킬을 만들어 이 문서를 생성했다. 기존 <code>dashboard.html</code>은 변경하지 않았다.</p>
+      <div class="chips">
+        <span class="chip ok">● <b>완료</b></span>
+        <span class="chip">날짜 <b>2026-07-10</b></span>
+        <span class="chip">커밋 <b>907b91b</b></span>
+        <span class="chip">브랜치 <b>main ↔ origin/main 동기화</b></span>
+        <span class="chip">신규 스킬 <b>dashboard-builder · htmlity</b></span>
+      </div>
+    </div>
+
+    <section id="timeline">
+      <h2><span class="n">01</span>진행 타임라인</h2>
+      <div class="timeline">
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">1</span>/harness 실행 · 현황 감사(Phase 0)</div>
+          <div class="tl-body">기존 하네스 확인 — 도메인 에이전트 8, 스킬 9(+오케스트레이터), 커맨드 없음. 기존 <code>dashboard.html</code>은 미추적 상태로 존재.</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">2</span>폴더 파일 분석 · 지표 추출</div>
+          <div class="tl-body"><code>README.md</code>·<code>CLAUDE.md</code>·<code>config/grid_config.yaml</code>·<code>.claude/*</code>·<code>_workspace/</code>에서 실제 수치 확보(에이전트 8·스킬 9·참조 5·스크립트 1 = 23, 격자 계약, ML 5종, 재현주기 3, 리허설 6/6).</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">3</span>dashboard-builder 에이전트 정의</div>
+          <div class="tl-body">서브 에이전트 모드의 시각화/리포팅 전문가 정의. 기존 8개 도메인 에이전트와 역할 분리.</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">4</span>dashboard-builder 스킬 + 참조 2</div>
+          <div class="tl-body"><code>SKILL.md</code> + <code>references/design-system.md</code>(밝은 테마 토큰·Chart.js 도넛 레시피) + <code>references/data-extraction.md</code>(소스→지표 매핑).</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">5</span>CLAUDE.md 포인터·변경 이력 등록</div>
+          <div class="tl-body">보조 하네스 트리거 규칙과 2026-07-10 변경 이력을 기록.</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">6</span>dashboard_v2.html 생성</div>
+          <div class="tl-body">사이드바+메인, KPI 6, <b>도넛 6종</b>(리허설·자산·모델·재현주기·파이프라인·자료), 파이프라인·에이전트·격자 계약·리허설·<b>하네스 진화 타임라인</b>. 수치는 전부 파일 추출.</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">7</span>크롬 렌더링 검증</div>
+          <div class="tl-body"><code>file://</code> 차단 → conda Python 로컬 서버(<code>127.0.0.1:8777</code>)로 열어 전 구간 스크린샷 확인. Chart.js 6개 차트 정상, 콘솔 에러 없음, 이미지 로드 정상.</div></div>
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">8</span>git 커밋 · 푸시</div>
+          <div class="tl-body"><code>907b91b</code> (7파일 +1204) → <code>origin/main</code> (<code>510983e..907b91b</code>). 개인 저장소·기존 main 커밋 관행에 따라 main 직접 푸시.</div></div>
+        <div class="tl now"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">9</span>htmlity 스킬 생성 · 본 문서 정리 ← 현재</div>
+          <div class="tl-body">진행 내용을 자체완결 HTML로 남기는 <code>htmlity</code> 스킬(<code>SKILL.md</code> + <code>assets/report-template.html</code>)을 만들고, 이 문서를 그 스킬로 생성.</div></div>
+      </div>
+    </section>
+
+    <section id="artifacts">
+      <h2><span class="n">02</span>산출물</h2>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>파일</th><th>상태</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="path">.claude/agents/dashboard-builder.md</span></td><td><span class="pill new">신규</span></td><td>대시보드 제작 에이전트(서브 에이전트 모드)</td></tr>
+          <tr><td><span class="path">.claude/skills/dashboard-builder/</span></td><td><span class="pill new">신규</span></td><td>SKILL + 참조 2(디자인 시스템·데이터 추출)</td></tr>
+          <tr><td><span class="path">dashboard_v2.html</span></td><td><span class="pill new">신규</span></td><td>운영 대시보드(Chart.js 도넛 6종)</td></tr>
+          <tr><td><span class="path">dashboard.html</span></td><td><span class="pill new">신규 추가</span></td><td>기존 원본 — <b>내용 변경 없이</b> 리포지토리에 포함</td></tr>
+          <tr><td><span class="path">CLAUDE.md</span></td><td><span class="pill mod">수정</span></td><td>보조 하네스 포인터 + 변경 이력</td></tr>
+          <tr><td><span class="path">.claude/skills/htmlity/</span></td><td><span class="pill new">신규</span></td><td>SKILL + report-template.html(본 스킬)</td></tr>
+          <tr><td><span class="path">docs/progress-2026-07-10.html</span></td><td><span class="pill new">신규</span></td><td>이 진행 정리 문서</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:10px">앞 7개 파일은 커밋 <code>907b91b</code>에 포함되어 푸시됨. <code>htmlity</code> 스킬과 본 문서는 커밋 이후 산출물(아직 미커밋).</p>
+    </section>
+
+    <section id="decisions">
+      <h2><span class="n">03</span>결정사항</h2>
+      <div class="callout"><div class="co-hd">서브 에이전트 모드로 설계</div>
+        <p>대시보드 생성은 단일 전문가 작업(실시간 협업 불필요)이라 에이전트 팀 대신 서브 에이전트 모드를 선택. 팀 통신 오버헤드를 피함.</p></div>
+      <div class="callout"><div class="co-hd">도메인 카운트 8/9 유지(도구는 제외)</div>
+        <p>대시보드 수치는 홍수위험 <b>도메인 하네스</b> 기준(에이전트 8·스킬 9). 새로 추가한 <code>dashboard-builder</code>/<code>htmlity</code>는 "만드는 도구"라 카운트에서 제외 — README 배지·<code>config</code>와 일치 유지. 규칙은 <code>data-extraction.md</code>에 기록.</p></div>
+      <div class="callout good"><div class="co-hd">기존 dashboard.html 보존</div>
+        <p>사용자 요청대로 내용 무변경. git에는 <code>add</code>만 하여 원본을 그대로 포함, 새 대시보드는 <code>dashboard_v2.html</code>로 분리.</p></div>
+      <div class="callout warn"><div class="co-hd">main 직접 푸시</div>
+        <p>기본 지침은 "기본 브랜치면 새 브랜치"이나, 이 저장소는 개인 소유·이력 전부 main·명시적 push 요청이라 관행에 맞춰 main에 커밋·푸시.</p></div>
+      <div class="callout"><div class="co-hd">htmlity ↔ dashboard-builder 경계</div>
+        <p><code>htmlity</code>는 서술형·구조화 <b>진행 문서</b>(순수 HTML/CSS, 외부 의존 0), <code>dashboard-builder</code>는 지표·Chart.js <b>대시보드</b>. description에 상호 구분을 명시해 트리거 충돌을 방지.</p></div>
+    </section>
+
+    <section id="verify">
+      <h2><span class="n">04</span>검증</h2>
+      <ul>
+        <li><b>대시보드 구조</b> — 캔버스 6 ↔ <code>doughnut()</code> 6 ↔ <code>legend()</code> 6 일치, 외부 <code>&lt;script&gt;</code>는 Chart.js CDN 1개뿐, 섹션 태그 7/7 균형.</li>
+        <li><b>대시보드 렌더</b> — 크롬에서 전 구간 스크린샷 확인, 도넛 6개·이미지·타임라인 정상, 콘솔 에러 없음.</li>
+        <li><b>dashboard.html 무변경</b> — git에서 내용 변경 없이 신규 <code>add</code>만 확인.</li>
+        <li><b>푸시 동기화</b> — <code>git status</code>가 <code>main ↔ origin/main</code> 동기화(ahead/behind 없음) 확인.</li>
+        <li><b>htmlity 문서</b> — 자체완결(외부 의존 0), TOC 앵커 동작, 표시 사실이 실제 파일·커밋과 일치.</li>
+      </ul>
+    </section>
+
+    <section id="next">
+      <h2><span class="n">05</span>다음 단계</h2>
+      <ul>
+        <li>원하면 <code>dashboard_v2.html</code>을 정식 <code>dashboard.html</code>로 승격(이름 변경).</li>
+        <li>검증용 로컬 서버(<code>127.0.0.1:8777</code>)는 아직 백그라운드 실행 중 — 정리 시 종료.</li>
+        <li><code>htmlity</code> 스킬과 본 문서 커밋·푸시 여부 결정.</li>
+        <li>이후 세션도 <code>htmlity</code>로 진행 기록을 지속 축적.</li>
+      </ul>
+    </section>
+
+    <section id="refs">
+      <h2><span class="n">06</span>참고</h2>
+      <ul>
+        <li>커밋: <code>907b91b</code> — feat: 운영 대시보드 하네스 + Chart.js 대시보드 추가</li>
+        <li>원격: <a href="https://github.com/kyungtakDS/01_flood_risk_grid_harness">github.com/kyungtakDS/01_flood_risk_grid_harness</a></li>
+        <li>근거 파일: <code>README.md</code> · <code>CLAUDE.md</code> · <code>config/grid_config.yaml</code> · <code>.claude/agents</code> · <code>.claude/skills</code> · <code>_workspace</code></li>
+      </ul>
+    </section>
+
+    <footer>
+      <span>출처: 세션 진행 · git 로그 · 프로젝트 파일</span>
+      <span>생성: <code>htmlity</code> 스킬 · 2026-07-10</span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

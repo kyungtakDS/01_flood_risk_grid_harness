@@ -28,3 +28,4 @@
 | 2026-07-07 | 낙동강 축소 AOI 테스트 리허설 6/6 통과, PROJ 충돌 발견·해결(env.ps1) | _workspace, env.ps1 | 첫 실행 리허설 |
 | 2026-07-07 | 프로젝트 구조 생성(data/raw·standard_grid·labels·watershed 드롭존, src/ 코드 골격, config, outputs) | data/·src/·config/·PROJECT_STRUCTURE.md | 사용자 요구(자료 제공·코드 공간) |
 | 2026-07-10 | 보조 하네스 추가: 운영 대시보드(dashboard-builder 에이전트+스킬, 서브 에이전트 모드). 실제 파일 지표 추출 → Notion+Linear·밝은 배경·Chart.js 도넛 대시보드. 기존 dashboard.html 무변경, 별도 `dashboard_v2.html` 출력 | .claude/agents/dashboard-builder.md, .claude/skills/dashboard-builder/, dashboard_v2.html | 사용자 요구(현황 대시보드 제작) |
+| 2026-07-10 | 유틸 스킬 추가: `htmlity`(진행 내용·세션 로그를 자체완결 HTML 문서로 정리·저장, 순수 HTML/CSS·외부 의존 0). dashboard-builder와 경계 구분(서술형 문서 vs 지표 대시보드). 적용 예: `docs/progress-2026-07-10.html` | .claude/skills/htmlity/, docs/progress-2026-07-10.html | 사용자 요구(진행 내용 HTML 정리) |

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<!-- htmlity: 이 파일을 복제해 내용을 채운다. 외부 의존 없이(순수 HTML/CSS) 단일 파일로 열린다. -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><!-- htmlity:title -->진행 정리 문서</title>
+<style>
+  :root{
+    --plane:#f7f7f8; --surface:#ffffff; --ink:#0b0b0b; --sub:#3f3e3c; --muted:#8a8984;
+    --line:rgba(11,11,11,0.09); --line-2:rgba(11,11,11,0.06);
+    --accent:#5b5bd6; --accent-soft:#eeeefb;
+    --good:#0ca30c; --warn:#c07d00; --info:#2a78d6; --danger:#d03b3b;
+    --shadow:0 1px 2px rgba(11,11,11,.04), 0 4px 16px rgba(11,11,11,.05);
+    --radius:12px;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--plane);color:var(--ink);
+    -webkit-font-smoothing:antialiased;line-height:1.65;font-size:15px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .wrap{display:grid;grid-template-columns:220px minmax(0,760px);gap:40px;
+    max-width:1060px;margin:0 auto;padding:40px 28px 80px}
+
+  /* TOC */
+  .toc{position:sticky;top:28px;align-self:start;font-size:13px}
+  .toc .toc-hd{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .toc a{display:block;color:var(--sub);padding:5px 10px;border-left:2px solid var(--line);font-weight:500}
+  .toc a:hover{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+
+  /* header */
+  .doc-head{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:8px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--accent);font-weight:700;margin-bottom:10px}
+  .doc-head h1{font-size:27px;font-weight:720;letter-spacing:-.02em;line-height:1.2}
+  .doc-head .lede{color:var(--sub);font-size:15px;margin-top:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550;
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 11px;color:var(--sub)}
+  .chip b{color:var(--ink);font-weight:660}
+  .chip.ok{background:#f0faf0;border-color:rgba(12,163,12,.25);color:#0a6b0a}
+
+  /* sections */
+  section{margin-top:38px;scroll-margin-top:24px}
+  h2{font-size:18px;font-weight:680;letter-spacing:-.01em;padding-bottom:8px;border-bottom:1px solid var(--line-2);margin-bottom:16px}
+  h2 .n{color:var(--muted);font-weight:600;margin-right:8px;font-variant-numeric:tabular-nums}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  code{font-family:var(--mono);font-size:.88em;background:#f0f0ee;border:1px solid var(--line-2);border-radius:5px;padding:1px 5px}
+
+  /* timeline */
+  .timeline{position:relative;padding-left:24px;margin-top:6px}
+  .timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .tl{position:relative;padding:0 0 18px 6px}
+  .tl:last-child{padding-bottom:0}
+  .tl-dot{position:absolute;left:-24px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+  .tl.done .tl-dot{background:var(--good);border-color:var(--good)}
+  .tl.now .tl-dot{background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .tl-title{font-size:14px;font-weight:650;letter-spacing:-.01em}
+  .tl-title .step{color:var(--muted);font-weight:600;margin-right:7px;font-variant-numeric:tabular-nums}
+  .tl-body{font-size:13.5px;color:var(--sub);margin-top:3px}
+
+  /* artifact table */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  table.tbl{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--surface)}
+  table.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:650;padding:11px 14px;border-bottom:1px solid var(--line)}
+  table.tbl td{padding:11px 14px;border-bottom:1px solid var(--line-2);color:var(--sub);vertical-align:top}
+  table.tbl tr:last-child td{border-bottom:none}
+  table.tbl td .path{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:550}
+
+  /* status pill */
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .pill.new{background:#eef4fd;color:#1a5fb4}
+  .pill.mod{background:#fff4e0;color:#9a6200}
+  .pill.ok{background:#eafaea;color:#0a6b0a}
+  .pill.wait{background:#f2f2f0;color:var(--muted)}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  /* callout */
+  .callout{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    background:var(--surface);padding:14px 16px;margin:14px 0;box-shadow:var(--shadow)}
+  .callout.warn{border-left-color:var(--warn)}
+  .callout.good{border-left-color:var(--good)}
+  .callout .co-hd{font-size:13px;font-weight:660;color:var(--ink);margin-bottom:4px}
+  .callout p{margin:4px 0;font-size:13.5px;color:var(--sub)}
+
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  footer code{font-size:11px}
+
+  @media (max-width:820px){
+    .wrap{grid-template-columns:1fr;gap:20px;padding:24px 18px 60px}
+    .toc{position:static;order:-1;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
+    .toc a{border-left:none;padding:4px 0}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- htmlity:toc — 각 섹션 앵커로 링크. 섹션 추가/삭제 시 여기도 맞춘다 -->
+  <nav class="toc">
+    <div class="toc-hd">목차</div>
+    <a href="#overview">개요</a>
+    <a href="#timeline">진행 타임라인</a>
+    <a href="#artifacts">산출물</a>
+    <a href="#decisions">결정사항</a>
+    <a href="#verify">검증</a>
+    <a href="#next">다음 단계</a>
+  </nav>
+
+  <main>
+    <!-- htmlity:header -->
+    <div class="doc-head" id="overview">
+      <div class="eyebrow"><!-- 프로젝트/맥락 라벨 -->진행 정리</div>
+      <h1><!-- 문서 제목 -->제목을 여기에</h1>
+      <p class="lede"><!-- 3~5줄 개요: 무엇을 요청받아 무엇을 했는지 + 상태 --></p>
+      <div class="chips">
+        <span class="chip ok">● <b>완료</b></span>
+        <span class="chip">날짜 <b>YYYY-MM-DD</b></span>
+        <!-- 필요한 만큼 chip 추가 -->
+      </div>
+    </div>
+
+    <!-- htmlity:timeline — 시간/순서대로. class: done(완료) / now(현재) / (예정) -->
+    <section id="timeline">
+      <h2><span class="n">01</span>진행 타임라인</h2>
+      <div class="timeline">
+        <div class="tl done"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">1</span>단계 제목</div>
+          <div class="tl-body">무엇을 했고 결과는 무엇.</div></div>
+        <div class="tl now"><div class="tl-dot"></div>
+          <div class="tl-title"><span class="step">N</span>현재 단계</div>
+          <div class="tl-body">지금 하고 있는/막 끝낸 것.</div></div>
+      </div>
+    </section>
+
+    <!-- htmlity:artifacts — 만들거나 바꾼 파일 -->
+    <section id="artifacts">
+      <h2><span class="n">02</span>산출물</h2>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>파일</th><th>상태</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><span class="path">경로/파일</span></td><td><span class="pill new">신규</span></td><td>설명</td></tr>
+          <tr><td><span class="path">경로/파일</span></td><td><span class="pill mod">수정</span></td><td>설명</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- htmlity:decisions — 왜 그렇게 했는가(선택 근거) -->
+    <section id="decisions">
+      <h2><span class="n">03</span>결정사항</h2>
+      <div class="callout"><div class="co-hd">결정 제목</div>
+        <p>선택한 것과 그 이유(대안 대비).</p></div>
+    </section>
+
+    <!-- htmlity:verify -->
+    <section id="verify">
+      <h2><span class="n">04</span>검증</h2>
+      <ul><li>어떻게 확인했는가 → 결과</li></ul>
+    </section>
+
+    <!-- htmlity:next -->
+    <section id="next">
+      <h2><span class="n">05</span>다음 단계</h2>
+      <ul><li>남은 일 / 후속 제안</li></ul>
+    </section>
+
+    <!-- htmlity:footer -->
+    <footer>
+      <span>출처: <!-- 근거 파일·커밋·URL --></span>
+      <span>생성: <code>htmlity</code></span>
+    </footer>
+  </main>
+</div>
+</body>
+</html>
