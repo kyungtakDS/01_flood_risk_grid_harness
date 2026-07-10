@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>홍수위험도 하네스 · 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --plane:#f7f7f8;          /* page background */
+    --surface:#ffffff;        /* card surface */
+    --surface-2:#fcfcfb;
+    --ink:#0b0b0b;            /* primary text */
+    --sub:#52514e;           /* secondary text */
+    --muted:#8a8984;         /* labels/axes */
+    --line:rgba(11,11,11,0.08);
+    --line-2:rgba(11,11,11,0.06);
+    --accent:#5b5bd6;        /* Linear-like indigo, chrome only */
+    --accent-soft:#eeeefb;
+    /* validated categorical slots */
+    --s1:#2a78d6; --s2:#1baf7a; --s3:#eda100; --s4:#008300; --s5:#4a3aa7;
+    --s6:#e34948; --s7:#e87ba4; --s8:#eb6834;
+    --good:#0ca30c; --critical:#d03b3b; --warn:#fab219;
+    --shadow:0 1px 2px rgba(11,11,11,.04), 0 4px 16px rgba(11,11,11,.04);
+    --radius:14px;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans); background:var(--plane); color:var(--ink);
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  a{color:inherit;text-decoration:none}
+
+  /* ---------- layout ---------- */
+  .app{display:grid; grid-template-columns:248px 1fr; min-height:100vh}
+  .rail{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:var(--surface); border-right:1px solid var(--line);
+    padding:22px 16px; display:flex; flex-direction:column; gap:6px;
+  }
+  .brand{padding:6px 8px 14px; border-bottom:1px solid var(--line-2); margin-bottom:8px}
+  .brand .mark{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,#6366f1,#2a78d6);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:18px;font-weight:700;margin-bottom:10px;
+  }
+  .brand h1{font-size:14px;font-weight:650;letter-spacing:-.01em;line-height:1.35}
+  .brand p{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);padding:12px 8px 4px;font-weight:600}
+  .nav a{
+    display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;
+    font-size:13px;color:var(--sub);font-weight:500;transition:background .12s,color .12s;
+  }
+  .nav a:hover{background:var(--accent-soft);color:var(--accent)}
+  .nav a .ic{width:15px;text-align:center;opacity:.7;font-size:13px}
+  .rail-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid var(--line-2);font-size:11px;color:var(--muted)}
+  .status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--good);margin-right:6px;box-shadow:0 0 0 3px rgba(12,163,12,.14)}
+
+  /* ---------- main ---------- */
+  .main{padding:30px 34px 60px; max-width:1180px}
+  .head{margin-bottom:26px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--accent);font-weight:650;margin-bottom:9px}
+  .head h2{font-size:26px;font-weight:680;letter-spacing:-.02em}
+  .head p{color:var(--sub);font-size:14px;margin-top:8px;max-width:70ch}
+  .metabar{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550;
+    background:var(--surface);border:1px solid var(--line);border-radius:999px;
+    padding:5px 11px;color:var(--sub);
+  }
+  .chip b{color:var(--ink);font-weight:650}
+  .chip.ok{background:#f0faf0;border-color:rgba(12,163,12,.2);color:#0a6b0a}
+
+  section{margin-top:40px;scroll-margin-top:20px}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .sec-head h3{font-size:16px;font-weight:650;letter-spacing:-.01em}
+  .sec-head .hint{font-size:12px;color:var(--muted)}
+
+  /* ---------- KPI ---------- */
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .kpi{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:15px 15px 14px; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);opacity:.85}
+  .kpi .k-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  .kpi .k-val{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-top:8px;line-height:1}
+  .kpi .k-sub{font-size:11.5px;color:var(--sub);margin-top:6px}
+  .kpi.c1::before{background:var(--good)} .kpi.c2::before{background:var(--s1)}
+  .kpi.c3::before{background:var(--s5)} .kpi.c4::before{background:var(--s8)}
+  .kpi.c5::before{background:var(--s2)} .kpi.c6::before{background:var(--s3)}
+
+  /* ---------- charts ---------- */
+  .chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 18px 16px;box-shadow:var(--shadow);
+  }
+  .card h4{font-size:13.5px;font-weight:640;letter-spacing:-.01em}
+  .card .csub{font-size:11.5px;color:var(--muted);margin-top:3px;margin-bottom:6px}
+  .chart-body{display:grid;grid-template-columns:170px 1fr;gap:14px;align-items:center;margin-top:6px}
+  .canvas-wrap{position:relative;height:170px}
+  .legend{display:flex;flex-direction:column;gap:9px}
+  .lg-row{display:flex;align-items:center;gap:9px;font-size:12.5px}
+  .lg-dot{width:10px;height:10px;border-radius:3px;flex:none}
+  .lg-label{color:var(--sub);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lg-val{font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
+
+  /* ---------- pipeline ---------- */
+  .flow{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+  .stage{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 12px;
+    box-shadow:var(--shadow);position:relative;border-top:3px solid var(--st);
+  }
+  .stage .num{font-size:11px;font-weight:700;color:var(--st);letter-spacing:.03em}
+  .stage .st-title{font-size:12.5px;font-weight:640;margin-top:6px;letter-spacing:-.01em}
+  .stage .st-meta{font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+  .stage .st-meta b{color:var(--sub);font-weight:600}
+  .qa-banner{
+    margin-top:12px;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--s6);
+    border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);
+  }
+  .qa-banner .q-ic{width:26px;height:26px;border-radius:7px;background:#fdecec;color:var(--critical);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+  .qa-banner .q-txt{font-size:12px;color:var(--sub)}
+  .qa-banner .q-txt b{color:var(--ink);font-weight:640}
+
+  /* ---------- agents ---------- */
+  .agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .agent{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;
+    box-shadow:var(--shadow);
+  }
+  .agent .a-top{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .agent .a-badge{width:28px;height:28px;border-radius:8px;background:var(--ab,#eef);display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .agent .a-name{font-size:12.5px;font-weight:640;letter-spacing:-.01em}
+  .agent .a-en{font-size:10px;color:var(--muted);font-family:ui-monospace,monospace}
+  .agent .a-desc{font-size:11.5px;color:var(--sub);line-height:1.5}
+  .agent .a-foot{margin-top:9px;display:flex;gap:6px;align-items:center}
+  .tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent)}
+  .tag.model{background:#f0f0ee;color:var(--sub)}
+
+  /* ---------- spec ---------- */
+  .spec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .spec{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+  .spec .s-key{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+  .spec .s-val{font-size:15px;font-weight:680;margin-top:7px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .spec .s-note{font-size:11px;color:var(--sub);margin-top:5px}
+
+  /* ---------- rehearsal ---------- */
+  .rehearsal{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+  .reh-img{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+  .reh-img img{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--line-2)}
+  .reh-img .cap{font-size:11px;color:var(--muted);margin-top:9px;text-align:center}
+  .checklist{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+  .checklist .cl-hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+  .checklist .cl-hd b{font-size:14px}
+  .checklist .cl-hd span{font-size:12px;color:var(--good);font-weight:650}
+  .check{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
+  .check:last-child{border-bottom:none}
+  .check .ck{width:18px;height:18px;border-radius:50%;background:#eafaea;color:var(--good);display:flex;align-items:center;justify-content:center;font-size:11px;flex:none;margin-top:1px;font-weight:700}
+  .check .c-body b{font-weight:600}
+  .check .c-body p{color:var(--muted);font-size:11px;margin-top:1px}
+
+  /* ---------- data zones ---------- */
+  .zones{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .zrow{display:grid;grid-template-columns:170px 1fr 110px;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line-2);font-size:12.5px}
+  .zrow:last-child{border-bottom:none}
+  .zrow .zpath{font-family:ui-monospace,"Cascadia Code",monospace;font-size:11.5px;color:var(--ink);font-weight:550}
+  .zrow .zdesc{color:var(--sub)}
+  .pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;justify-self:end;display:inline-flex;align-items:center;gap:5px}
+  .pill.wait{background:#f4f4f2;color:var(--muted)}
+  .pill.ready{background:#f0faf0;color:#0a6b0a}
+  .pill .pdot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1080px){
+    .kpi-grid{grid-template-columns:repeat(3,1fr)}
+    .flow{grid-template-columns:repeat(4,1fr)}
+    .agent-grid,.spec-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    .rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px}
+    .brand{border-bottom:none;border-right:1px solid var(--line-2);padding:0 14px 0 4px;margin:0}
+    .brand .mark{display:none} .nav-label,.rail-foot{display:none}
+    .nav{display:flex;flex-wrap:wrap}
+    .chart-grid,.rehearsal{grid-template-columns:1fr}
+    .main{padding:22px 18px 50px}
+  }
+  @media (max-width:620px){
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+    .flow,.agent-grid,.spec-grid{grid-template-columns:1fr}
+    .chart-body{grid-template-columns:1fr}
+    .canvas-wrap{max-width:220px;margin:0 auto}
+    .zrow{grid-template-columns:1fr;gap:5px}
+    .pill{justify-self:start}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="mark">洪</div>
+      <h1>전국 홍수위험도 하네스</h1>
+      <p>격자 100m · EPSG:5179</p>
+    </div>
+    <div class="nav-label">대시보드</div>
+    <nav class="nav">
+      <a href="#overview"><span class="ic">◎</span>개요 · 핵심지표</a>
+      <a href="#metrics"><span class="ic">◐</span>구성 분석</a>
+      <a href="#pipeline"><span class="ic">⇄</span>파이프라인</a>
+      <a href="#agents"><span class="ic">◇</span>에이전트 팀</a>
+      <a href="#grid"><span class="ic">▦</span>격자 계약</a>
+      <a href="#rehearsal"><span class="ic">✓</span>리허설 결과</a>
+      <a href="#data"><span class="ic">▤</span>자료 현황</a>
+    </nav>
+    <div class="rail-foot">
+      <span class="status-dot"></span>초기 구성 완료<br>
+      리허설 6/6 통과 · 2026-07-10
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main">
+    <!-- HEADER -->
+    <div class="head" id="overview">
+      <div class="eyebrow">Flood Risk Harness · Operations</div>
+      <h2>격자(100m) 전국 홍수위험도 평가·예측 하네스</h2>
+      <p>이종 원시자료를 전국 100m 표준격자망(EPSG:5179, 수자원단위 대권역/중권역)에 표준화하고,
+         지형·수문·노출·취약성 인자를 통합해 머신러닝(RF·XGBoost·LightGBM·CatBoost·DecisionTree)으로
+         격자별 홍수위험도를 산출하는 <b>에이전트 하네스</b>의 구성·상태를 한눈에 관리합니다.</p>
+      <div class="metabar">
+        <span class="chip ok">● 리허설 <b>6/6 통과</b></span>
+        <span class="chip">격자 <b>100m</b></span>
+        <span class="chip">CRS <b>EPSG:5179</b></span>
+        <span class="chip">런타임 <b>Python 3.11 · flood_risk311</b></span>
+        <span class="chip">모델링 단위 <b>중권역 + 공간 CV</b></span>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+      <div class="kpi c1"><div class="k-label">리허설 검증</div><div class="k-val">6/6</div><div class="k-sub">통과율 100%</div></div>
+      <div class="kpi c2"><div class="k-label">에이전트</div><div class="k-val">8</div><div class="k-sub">전문가 팀 · all opus</div></div>
+      <div class="kpi c3"><div class="k-label">스킬</div><div class="k-val">9</div><div class="k-sub">+ 오케스트레이터</div></div>
+      <div class="kpi c4"><div class="k-label">ML 모델</div><div class="k-val">5</div><div class="k-sub">트리 기반 비교</div></div>
+      <div class="kpi c5"><div class="k-label">재현주기</div><div class="k-val">3</div><div class="k-sub">50 · 100 · 200년</div></div>
+      <div class="kpi c6"><div class="k-label">파이프라인</div><div class="k-val">7</div><div class="k-sub">단계 + 증분 QA</div></div>
+    </div>
+
+    <!-- CHARTS -->
+    <section id="metrics">
+      <div class="sec-head"><h3>구성 분석</h3><span class="hint">원형(도넛) 차트 · Chart.js · 값은 프로젝트 파일에서 추출</span></div>
+      <div class="chart-grid">
+        <div class="card">
+          <h4>리허설 검증 결과</h4>
+          <div class="csub">낙동강 축소 AOI · 실제 코드(flood_risk311) 검증</div>
+          <div class="chart-body">
+            <div class="canvas-wrap"><canvas id="chReh"></canvas></div>
+            <div class="legend" id="lgReh"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>하네스 자산 구성</h4>
+          <div class="csub">.claude/ 정의 파일 23개</div>
+          <div class="chart-body">
+            <div class="canvas-wrap"><canvas id="chAsset"></canvas></div>
+            <div class="legend" id="lgAsset"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>ML 모델 포트폴리오</h4>
+          <div class="csub">침수흔적도 ∪ NDMS 라벨로 학습·비교</div>
+          <div class="chart-body">
+            <div class="canvas-wrap"><canvas id="chModel"></canvas></div>
+            <div class="legend" id="lgModel"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h4>자료 준비 현황</h4>
+          <div class="csub">data/ 드롭존 8종 · 원시자료 투입 대기</div>
+          <div class="chart-body">
+            <div class="canvas-wrap"><canvas id="chData"></canvas></div>
+            <div class="legend" id="lgData"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIPELINE -->
+    <section id="pipeline">
+      <div class="sec-head"><h3>처리 파이프라인</h3><span class="hint">flood-risk-orchestrator가 Phase별 팀을 재구성</span></div>
+      <div class="flow">
+        <div class="stage" style="--st:var(--s1)"><div class="num">01</div><div class="st-title">원시자료 표준화</div><div class="st-meta"><b>geo-data-engineer</b><br>geodata-grid-pipeline</div></div>
+        <div class="stage" style="--st:var(--s2)"><div class="num">02</div><div class="st-title">지형 재해인자</div><div class="st-meta"><b>terrain-hazard-analyst</b><br>terrain-hazard-factors</div></div>
+        <div class="stage" style="--st:var(--s3)"><div class="num">03</div><div class="st-title">수문 재해인자</div><div class="st-meta"><b>hydro-hazard-analyst</b><br>hydro-hazard-factors</div></div>
+        <div class="stage" style="--st:var(--s4)"><div class="num">04</div><div class="st-title">노출·취약성 인자</div><div class="st-meta"><b>exposure-vulnerability-analyst</b><br>exposure-vulnerability-factors</div></div>
+        <div class="stage" style="--st:var(--s5)"><div class="num">05</div><div class="st-title">ML 위험지수</div><div class="st-meta"><b>flood-risk-modeler</b><br>flood-risk-index-modeling</div></div>
+        <div class="stage" style="--st:var(--s8)"><div class="num">06</div><div class="st-title">재현주기 예측</div><div class="st-meta"><b>scenario-forecaster</b><br>flood-forecast-scenarios</div></div>
+        <div class="stage" style="--st:var(--s7)"><div class="num">07</div><div class="st-title">위험지도·리포트</div><div class="st-meta"><b>geo-cartographer</b><br>flood-risk-cartography</div></div>
+      </div>
+      <div class="qa-banner">
+        <div class="q-ic">✓</div>
+        <div class="q-txt"><b>validation-inspector · flood-model-validation</b> — 전 단계를 가로지르는 증분 QA. 격자 계약(CRS·transform·shape·셀정렬·NoData)을 강제 검증하고 라벨 대비 성능(ROC/PR-AUC·POD/FAR/CSI)·공간 과적합을 점검합니다.</div>
+      </div>
+    </section>
+
+    <!-- AGENTS -->
+    <section id="agents">
+      <div class="sec-head"><h3>에이전트 팀</h3><span class="hint">전문가 8 · 모델 opus · 활성 팀 ≤ 5</span></div>
+      <div class="agent-grid">
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#e7f0fb">▦</div><div><div class="a-name">데이터 엔지니어</div><div class="a-en">geo-data-engineer</div></div></div><div class="a-desc">이종 원시자료·라벨을 100m 표준격자망에 정합·표준화하고 대권역/중권역으로 파티셔닝하는 초석 에이전트.</div><div class="a-foot"><span class="tag">표준화</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#e6f6ef">⛰</div><div><div class="a-name">지형 재해 분석</div><div class="a-en">terrain-hazard-analyst</div></div></div><div class="a-desc">DEM에서 경사·저지대·TWI·HAND·곡률·흐름누적 등 지형 소인을 산출. 흐름 기반 인자는 완전유역에서 처리.</div><div class="a-foot"><span class="tag">지형</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#fbf3e0">☔</div><div><div class="a-name">수문 재해 분석</div><div class="a-en">hydro-hazard-analyst</div></div></div><div class="a-desc">재현주기별 확률강우량, 유출곡선지수(CN), 하천 근접·차수·범람, 배수능력을 격자화하는 수문 전문가.</div><div class="a-foot"><span class="tag">수문</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#e6f3e6">🏙</div><div><div class="a-name">노출·취약성 분석</div><div class="a-en">exposure-vulnerability-analyst</div></div></div><div class="a-desc">인구·자산·취약계층을 다이어시메트릭으로 격자 분배하고 건물·불투수·방재인프라를 인자화.</div><div class="a-foot"><span class="tag">노출</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#ecebf7">◆</div><div><div class="a-name">위험지수 모델러</div><div class="a-en">flood-risk-modeler</div></div></div><div class="a-desc">인자를 통합해 RF·XGB·LGBM·CatBoost·DT를 침수이력 라벨로 학습·비교. 중권역 공간 CV로 정직하게 검증.</div><div class="a-foot"><span class="tag">모델링</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#fbeee4">🌀</div><div><div class="a-name">시나리오 예측</div><div class="a-en">scenario-forecaster</div></div></div><div class="a-desc">학습 모델을 재사용해 50/100/200년 빈도 확률강우 시나리오별 미래 위험도와 위험 증분을 예측.</div><div class="a-foot"><span class="tag">예측</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#fbe6ee">🗺</div><div><div class="a-name">지도 제작</div><div class="a-en">geo-cartographer</div></div></div><div class="a-desc">위험지수를 Jenks/분위로 등급화해 위험지도·COG·웹타일·노출 교차 통계·방재 리포트로 변환.</div><div class="a-foot"><span class="tag">지도</span><span class="tag model">opus</span></div></div>
+        <div class="agent"><div class="a-top"><div class="a-badge" style="--ab:#fbe6e6">✓</div><div><div class="a-name">검증 검사관</div><div class="a-en">validation-inspector</div></div></div><div class="a-desc">격자 계약을 강제 검증하고 라벨 대비 성능·공간 과적합·라벨 누수를 점검하는 QA. 각 산출 직후 증분 검증.</div><div class="a-foot"><span class="tag">QA</span><span class="tag model">opus</span></div></div>
+      </div>
+    </section>
+
+    <!-- GRID CONTRACT -->
+    <section id="grid">
+      <div class="sec-head"><h3>표준격자 계약</h3><span class="hint">config/grid_config.yaml · 모든 산출물의 단일 기준</span></div>
+      <div class="spec-grid">
+        <div class="spec"><div class="s-key">좌표계 (CRS)</div><div class="s-val">EPSG:5179</div><div class="s-note">Korea 2000 / UTM-K, GRS80</div></div>
+        <div class="spec"><div class="s-key">해상도</div><div class="s-val">100 m</div><div class="s-note">100×100 정사각 격자</div></div>
+        <div class="spec"><div class="s-key">NoData</div><div class="s-val">−9999</div><div class="s-note">결측 ≠ 0 · 명시적 값</div></div>
+        <div class="spec"><div class="s-key">원점 정렬</div><div class="s-val">snap ✓</div><div class="s-note">국가 표준격자 원점 snap</div></div>
+        <div class="spec"><div class="s-key">파티션</div><div class="s-val">대권역 → 중권역</div><div class="s-note">처리=대권역 · 모델=중권역</div></div>
+        <div class="spec"><div class="s-key">파일 포맷</div><div class="s-val">COG</div><div class="s-note">인자당 단일밴드 · 표=GeoParquet</div></div>
+        <div class="spec"><div class="s-key">격자 ID</div><div class="s-val">sw_corner</div><div class="s-note">SW 모서리 좌표 인코딩(join 키)</div></div>
+        <div class="spec"><div class="s-key">교차검증</div><div class="s-val">spatial_block</div><div class="s-note">중권역 블록 CV · 무작위 k-fold 금지</div></div>
+      </div>
+    </section>
+
+    <!-- REHEARSAL -->
+    <section id="rehearsal">
+      <div class="sec-head"><h3>리허설 결과 — 낙동강 테스트 AOI</h3><span class="hint">4km×4km · 합성 데이터 · 실제 파이프라인 코드</span></div>
+      <div class="rehearsal">
+        <div class="reh-img">
+          <img src="docs/rehearsal_result.png" alt="낙동강 테스트 AOI 리허설 결과 — 6개 격자 패널">
+          <div class="cap">40×40 @100m · 재투영 EPSG:4326→5179 · 격자 계약 검증 · 라벨 = 침수흔적도(poly) ∪ NDMS(point)</div>
+        </div>
+        <div class="checklist">
+          <div class="cl-hd"><b>검증 항목</b><span>6 / 6 PASS</span></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>DEM 표준화</b><p>연속 래스터 · 4326→5179 재투영 · bilinear</p></div></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>토지피복 표준화</b><p>범주형 폴리곤 · nearest 래스터화</p></div></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>강우 표준화</b><p>관측 포인트 → 최근접 격자화(연속장)</p></div></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>라벨 격자화</b><p>침수흔적도 폴리곤 ∪ NDMS 포인트</p></div></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>의도적 불일치 차단</b><p>원점 50m 밀림 → 계약 위반 검출 성공</p></div></div>
+          <div class="check"><div class="ck">✓</div><div class="c-body"><b>지형 인자(경사) 산출</b><p>표준화 DEM → slope</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA ZONES -->
+    <section id="data">
+      <div class="sec-head"><h3>자료 드롭존 현황</h3><span class="hint">data/ 하위 · 자료를 넣으면 하네스가 표준화</span></div>
+      <div class="zones">
+        <div class="zrow"><span class="zpath">raw/point/</span><span class="zdesc">강우관측소 · NDMS 피해 · 건물 · 시설</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">raw/polygon/</span><span class="zdesc">토지피복 · 침수흔적도 · 행정경계 · 지질</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">raw/raster/</span><span class="zdesc">DEM · 레이더강수 · 토양 (상이 해상도/CRS)</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">raw/tabular/</span><span class="zdesc">행정구역 단위 인구·자산·취약계층 집계</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">raw/timeseries/</span><span class="zdesc">강우·수위 관측 시계열</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">standard_grid/</span><span class="zdesc">기제작 마스터 격자 / 사전격자 자료(제공 시)</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">labels/</span><span class="zdesc">타깃: 침수흔적도 · NDMS (원시 또는 격자)</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">watershed/</span><span class="zdesc">수자원단위지도(대권역/중권역/표준유역)</span><span class="pill wait"><span class="pdot"></span>대기</span></div>
+        <div class="zrow"><span class="zpath">_workspace/</span><span class="zdesc">리허설 산출물(마스터격자·DEM·라벨·경사 등)</span><span class="pill ready"><span class="pdot"></span>검증 완료</span></div>
+      </div>
+    </section>
+
+    <footer>
+      <span>출처: README.md · CLAUDE.md · config/grid_config.yaml · _workspace/run_test_rehearsal.py</span>
+      <span>실행 전 <code>. .\env.ps1</code> (PROJ 고정) · 트리거: "낙동강권역 홍수위험도 평가해줘"</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+const P = {
+  s1:'#2a78d6', s2:'#1baf7a', s3:'#eda100', s4:'#008300', s5:'#4a3aa7',
+  good:'#0ca30c', critical:'#d03b3b', muted:'#c9c8c2', surface:'#ffffff',
+  ink:'#0b0b0b', sub:'#52514e'
+};
+
+// center-text plugin
+Chart.register({
+  id:'centerText',
+  afterDraw(chart){
+    const o = chart.options.plugins.centerText; if(!o) return;
+    const {ctx, chartArea:{left,right,top,bottom}} = chart;
+    const cx=(left+right)/2, cy=(top+bottom)/2;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=P.ink; ctx.font='700 25px system-ui,"Segoe UI",sans-serif';
+    ctx.fillText(o.line1, cx, cy-8);
+    ctx.fillStyle=P.sub; ctx.font='500 11.5px system-ui,"Segoe UI",sans-serif';
+    ctx.fillText(o.line2, cx, cy+13);
+    ctx.restore();
+  }
+});
+
+function doughnut(id, data, colors, center){
+  return new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{ labels:data.map(d=>d.label), datasets:[{
+      data:data.map(d=>d.value), backgroundColor:colors,
+      borderColor:P.surface, borderWidth:3, borderRadius:5, spacing:2, hoverOffset:6
+    }]},
+    options:{
+      cutout:'70%', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false}, centerText:center,
+        tooltip:{ backgroundColor:'#141413', padding:10, cornerRadius:8,
+          titleFont:{size:12}, bodyFont:{size:12},
+          callbacks:{ label:(c)=> ` ${c.label}: ${c.raw}` } }
+      },
+      animation:{ animateScale:true, duration:700, easing:'easeOutQuart' }
+    }
+  });
+}
+function legend(id, data, colors){
+  document.getElementById(id).innerHTML = data.map((d,i)=>
+    `<div class="lg-row"><span class="lg-dot" style="background:${colors[i]}"></span>
+     <span class="lg-label">${d.label}</span><span class="lg-val">${d.val ?? d.value}</span></div>`).join('');
+}
+
+// 1) 리허설 검증 (status)
+const reh=[{label:'통과',value:6},{label:'실패',value:0}];
+const rehC=[P.good, P.critical];
+doughnut('chReh', reh, rehC, {line1:'100%', line2:'6 / 6 통과'});
+legend('lgReh', reh, rehC);
+
+// 2) 하네스 자산 구성 (categorical, real counts)
+const asset=[{label:'에이전트',value:8},{label:'스킬 (+오케)',value:9},{label:'참조 문서',value:5},{label:'번들 스크립트',value:1}];
+const assetC=[P.s1,P.s2,P.s3,P.s4];
+doughnut('chAsset', asset, assetC, {line1:'23', line2:'정의 파일'});
+legend('lgAsset', asset, assetC);
+
+// 3) ML 모델 포트폴리오 (roster)
+const model=[{label:'RandomForest',value:1},{label:'XGBoost',value:1},{label:'LightGBM',value:1},{label:'CatBoost',value:1},{label:'DecisionTree',value:1}];
+const modelC=[P.s1,P.s2,P.s3,P.s4,P.s5];
+doughnut('chModel', model, modelC, {line1:'5', line2:'모델 비교'});
+legend('lgModel', model.map(m=>({label:m.label,val:'●'})), modelC);
+
+// 4) 자료 준비 현황 (status)
+const data=[{label:'투입 대기',value:8},{label:'준비 완료',value:0}];
+const dataC=[P.muted, P.good];
+doughnut('chData', data, dataC, {line1:'0 / 8', line2:'드롭존 준비'});
+legend('lgData', data, dataC);
+</script>
+</body>
+</html>
